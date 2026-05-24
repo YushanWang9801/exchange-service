@@ -1,0 +1,14 @@
+{
+    "name": "exchange-service",
+    "type": "module",
+    "scripts": {
+      "dev": "tsx watch index.ts"
+    },
+    "dependencies": {
+      "dotenv": "^16.4.7",
+      "express": "^4.21.2"
+    },
+    "devDependencies": {
+      "tsx": "^4.19.4"
+    }
+  }
