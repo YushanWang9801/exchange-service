@@ -1,87 +1,27 @@
 import express from 'express';
-
-import 'dotenv/config';
-
 const app = express();
-app.use(express.json());
 
-const {
-  CURRENCY_API_KEY,
-  SB_ANON,
-  API_SECRET,
-} = process.env;
+// ❶ 线上绝对不要 dotenv！注释掉或删掉
+// import 'dotenv/config';
 
-const PORT = 5899; // 👈 永远不冲突
-const SB_URL = 'https://rhyjuyvipbjtttmeqtdq.supabase.co';
+// ❷ 直接读 process.env，不做任何默认值
+const CURRENCY_API_KEY = process.env.CURRENCY_API_KEY;
+const SB_ANON = process.env.SB_ANON;
+const API_SECRET = process.env.API_SECRET;
 
-// 密码验证
-function auth(req, res, next) {
-  const { secret } = req.body;
-  if (!secret || secret !== API_SECRET) {
-    return res.status(403).json({ ok: false, error: '无权访问' });
-  }
-  next();
-}
+const PORT = process.env.PORT || 5899;
 
-// 抓取汇率并存数据库
-async function fetchAndSaveRates() {
-  const url = `https://api.currencyapi.com/v3/latest?apikey=${CURRENCY_API_KEY}&base_currency=USD&currencies=CNY,EUR,GBP,CAD,XAU`;
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`CurrencyAPI 请求失败 ${resp.status}`);
-
-  const json = await resp.json();
-  const r = json.data;
-
-  const rates = {
-    usd_cny: r.CNY.value,
-    eur_cny: r.CNY.value / r.EUR.value,
-    gbp_cny: r.CNY.value / r.GBP.value,
-    cad_cny: r.CNY.value / r.CAD.value,
-    usd_cad: r.CAD.value,
-    gold_cny: r.CNY.value / r.XAU.value / 31.1035,
-    timestamp: json.meta.last_updated_at,
-  };
-
-  const sbResp = await fetch(`${SB_URL}/rest/v1/exchanges`, {
-    method: 'POST',
-    headers: {
-      apikey: SB_ANON,
-      Authorization: `Bearer ${SB_ANON}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify([rates]),
-  });
-
-  if (!sbResp.ok) {
-    const txt = await sbResp.text();
-    throw new Error(`Supabase 错误 ${sbResp.status}: ${txt}`);
-  }
-
-  return rates;
-}
-
-// 调试接口（Railway 日志里直接看）
-app.get('/debug', (req, res) => {
+// ❸ 专门做一个 /env 接口，把所有相关变量打出来
+app.get('/env', (req, res) => {
   res.json({
-    API_SECRET: API_SECRET,
-    API_SECRET_LEN: API_SECRET ? API_SECRET.length : 0,
-    HAS_CURRENCY: !!CURRENCY_API_KEY,
-    HAS_SB_ANON: !!SB_ANON,
+    CURRENCY_API_KEY: !!CURRENCY_API_KEY,
+    SB_ANON: !!SB_ANON,
+    API_SECRET: !!API_SECRET,
+    // 把 process.env 所有 key 列出来，看有没有你要的
+    allKeys: Object.keys(process.env)
   });
-});
-
-// 接口
-app.post('/api/update', auth, async (req, res) => {
-  try {
-    const data = await fetchAndSaveRates();
-    res.json({ ok: true, data });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ 服务启动成功：http://localhost:${PORT}`);
+  console.log('Listening on', PORT);
 });
