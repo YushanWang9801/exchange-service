@@ -1,7 +1,4 @@
 import express from 'express';
-import { config } from 'dotenv';
-
-config({ path: '.env.local' });
 
 const app = express();
 app.use(express.json());
@@ -61,6 +58,16 @@ async function fetchAndSaveRates() {
 
   return rates;
 }
+
+// 调试接口（Railway 日志里直接看）
+app.get('/debug', (req, res) => {
+  res.json({
+    API_SECRET: API_SECRET,
+    API_SECRET_LEN: API_SECRET ? API_SECRET.length : 0,
+    HAS_CURRENCY: !!CURRENCY_API_KEY,
+    HAS_SB_ANON: !!SB_ANON,
+  });
+});
 
 // 接口
 app.post('/api/update', auth, async (req, res) => {
